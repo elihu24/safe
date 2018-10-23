@@ -20,7 +20,6 @@ import (
 	"github.com/cloudfoundry/socks5-proxy"
 	"github.com/jhunt/go-ansi"
 	"github.com/starkandwayne/goutils/tree"
-	. "github.com/starkandwayne/safe/auth"
 )
 
 type Vault struct {
