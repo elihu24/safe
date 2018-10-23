@@ -8,15 +8,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-community/vaultkv"
+	"github.com/cloudfoundry/socks5-proxy"
 	"github.com/jhunt/go-ansi"
 	"github.com/starkandwayne/goutils/tree"
+	. "github.com/starkandwayne/safe/auth"
 )
 
 type Vault struct {
@@ -64,6 +68,11 @@ func NewVault(u, token string, auth bool) (*Vault, error) {
 		vaultURL.Host = vaultURL.Host + port
 	}
 
+	var dialer = SOCKS5DialFuncFromEnvironment((&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial, proxy.NewSocks5Proxy(proxy.NewHostKey(), nil))
+
 	return &Vault{
 		client: &vaultkv.Client{
 			VaultURL:  vaultURL,
@@ -75,8 +84,19 @@ func NewVault(u, token string, auth bool) (*Vault, error) {
 						RootCAs:            roots,
 						InsecureSkipVerify: os.Getenv("VAULT_SKIP_VERIFY") != "",
 					},
+					Dial:                dialer,
+					MaxIdleConnsPerHost: 100,
 				},
 			},
+			// Client: &http.Client{
+			// 	Transport: &http.Transport{
+			// 		Proxy: http.ProxyFromEnvironment,
+			// 		TLSClientConfig: &tls.Config{
+			// 			RootCAs:            roots,
+			// 			InsecureSkipVerify: os.Getenv("VAULT_SKIP_VERIFY") != "",
+			// 		},
+			// 	},
+			// },
 			Trace: func() (ret io.Writer) {
 				if shouldDebug() {
 					ret = os.Stderr
